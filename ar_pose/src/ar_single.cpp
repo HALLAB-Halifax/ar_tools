@@ -220,16 +220,18 @@ namespace ar_pose
     // detect the markers in the video frame 
     if (arDetectMarker (dataPtr, threshold_, &marker_info, &marker_num) < 0)
     {
+      ROS_INFO("No marker");			
       ROS_FATAL ("arDetectMarker failed");
       ROS_BREAK ();             // FIXME: I don't think this should be fatal... -Bill
     }
-
+	
     // check for known patterns
     k = -1;
     for (i = 0; i < marker_num; i++)
     {
       if (marker_info[i].id == patt_id_)
       {
+	ROS_INFO("Pattern found");
         ROS_DEBUG ("Found pattern: %d ", patt_id_);
 
         // make sure you have the best pattern (highest confidence factor)
@@ -297,6 +299,7 @@ namespace ar_pose
       tf::Quaternion rotation (quat[0], quat[1], quat[2], quat[3]);
       tf::Vector3 origin (pos[0], pos[1], pos[2]);
       tf::Transform t (rotation, origin);
+      ROS_INFO("calculated the transform");
 #else
 // DEPRECATED: Fuerte support ends when Hydro is released
       btQuaternion rotation (quat[0], quat[1], quat[2], quat[3]);
@@ -311,6 +314,7 @@ namespace ar_pose
         {
           tf::StampedTransform markerToCam (t.inverse(), image_msg->header.stamp, markerFrame_.c_str(), image_msg->header.frame_id);
           broadcaster_.sendTransform(markerToCam);
+	  ROS_INFO("published reversed tranform");
         } else {
           tf::StampedTransform camToMarker (t, image_msg->header.stamp, image_msg->header.frame_id, markerFrame_.c_str());
           broadcaster_.sendTransform(camToMarker);
@@ -358,6 +362,7 @@ namespace ar_pose
     else
     {
       contF = 0;
+      ROS_INFO("Failed to locate marker");
       ROS_DEBUG ("Failed to locate marker");
     }
   }
