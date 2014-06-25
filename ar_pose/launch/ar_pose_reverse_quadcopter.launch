@@ -1,9 +1,11 @@
 <launch>
+  <arg name="viz_artag" default="true" />
+  <group if="$(arg viz_artag)">
   <node pkg="rviz" type="rviz" name="rviz" 
     args="-d $(find ar_pose)/launch/live_reverse.rviz"/>
   <!--node pkg="tf" type="static_transform_publisher" name="world_to_marker" 
     args="0 1 1 -1.57 3.14 -1.57 world ar_marker 10" /-->
- 
+ </group>
  
   <node name="ar_pose" pkg="ar_pose" type="ar_single" respawn="false" output="screen">
 <remap from="/camera/image_raw" to="/drone/downward_cam/camera/image"/>
