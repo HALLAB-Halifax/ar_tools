@@ -95,7 +95,8 @@ namespace ar_pose
 
     //std::string cameraFrame_;
     std::string markerFrame_;
-    bool publishTf_;
+    bool publishTf_; 
+    bool artag_found;
     bool publishVisualMarkers_;
     bool useHistory_;
     int threshold_;

@@ -71,6 +71,7 @@ namespace ar_pose
       markerFrame_ = "ar_marker";
     ROS_INFO ("\tMarker frame: %s", markerFrame_.c_str());
 
+    ros::param::set("artag_found",false);
     // If mode=0, we use arGetTransMat instead of arGetTransMatCont
     // The arGetTransMatCont function uses information from the previous image
     // frame to reduce the jittering of the marker
@@ -102,11 +103,11 @@ namespace ar_pose
     ROS_INFO ("Subscribing to info topic");
     sub_ = n_.subscribe (cameraInfoTopic_, 1, &ARSinglePublisher::camInfoCallback, this);
     getCamInfo_ = false;
-    
-    // **** advertsie 
+
+    // **** advertsie
 
     arMarkerPub_   = n_.advertise<ar_pose::ARMarker>("ar_pose_marker", 0);
-    if(publishVisualMarkers_){ 
+    if(publishVisualMarkers_){
 		rvizMarkerPub_ = n_.advertise<visualization_msgs::Marker>("visualization_marker", 0);
 	 }
   }
@@ -126,7 +127,7 @@ namespace ar_pose
 
       cam_param_.xsize = cam_info_.width;
       cam_param_.ysize = cam_info_.height;
-      
+
       cam_param_.mat[0][0] = cam_info_.P[0];
       cam_param_.mat[1][0] = cam_info_.P[4];
       cam_param_.mat[2][0] = cam_info_.P[8];
@@ -139,7 +140,7 @@ namespace ar_pose
       cam_param_.mat[0][3] = cam_info_.P[3];
       cam_param_.mat[1][3] = cam_info_.P[7];
       cam_param_.mat[2][3] = cam_info_.P[11];
-     
+
 	  cam_param_.dist_factor[0] = cam_info_.K[2];       // x0 = cX from openCV calibration
       cam_param_.dist_factor[1] = cam_info_.K[5];       // y0 = cY from openCV calibration
       if ( cam_info_.distortion_model == "plumb_bob" && cam_info_.D.size() == 5)
@@ -148,7 +149,7 @@ namespace ar_pose
         cam_param_.dist_factor[2] = 0;                  // We don't know the right value, so ignore it
 
       cam_param_.dist_factor[3] = 1.0;                  // scale factor, should probably be >1, but who cares...
-	     
+
       arInit();
 
       ROS_INFO ("Subscribing to image topic");
@@ -158,7 +159,7 @@ namespace ar_pose
   }
 
   void ARSinglePublisher::arInit ()
-  {   
+  {
     arInitCparam (&cam_param_);
 
     ROS_INFO ("*** Camera Parameter ***");
@@ -193,7 +194,7 @@ namespace ar_pose
 
     /* Get the image from ROSTOPIC
      * NOTE: the dataPtr format is BGR because the ARToolKit library was
-     * build with V4L, dataPtr format change according to the 
+     * build with V4L, dataPtr format change according to the
      * ARToolKit configure option (see config.h).*/
 #if ROS_VERSION_MINIMUM(1, 9, 0)
     try
@@ -217,14 +218,14 @@ namespace ar_pose
     dataPtr = (ARUint8 *) capture_->imageData;
 #endif
 
-    // detect the markers in the video frame 
+    // detect the markers in the video frame
     if (arDetectMarker (dataPtr, threshold_, &marker_info, &marker_num) < 0)
     {
-      ROS_INFO("No marker");			
+      ROS_INFO("No marker");
       ROS_FATAL ("arDetectMarker failed");
       ROS_BREAK ();             // FIXME: I don't think this should be fatal... -Bill
     }
-	
+
     // check for known patterns
     k = -1;
     for (i = 0; i < marker_num; i++)
@@ -244,6 +245,7 @@ namespace ar_pose
 
     if (k != -1)
     {
+      ros::param::set("artag_found",true);
       // **** get the transformation between the marker and the real camera
       double arQuat[4], arPos[3];
 
@@ -260,7 +262,7 @@ namespace ar_pose
       // **** convert to ROS frame
 
       double quat[4], pos[3];
-    
+
       pos[0] = arPos[0] * AR_TO_ROS;
       pos[1] = arPos[1] * AR_TO_ROS;
       pos[2] = arPos[2] * AR_TO_ROS;
@@ -287,12 +289,12 @@ namespace ar_pose
 		  ar_pose_marker_.pose.pose.orientation.y = quat[1];
 		  ar_pose_marker_.pose.pose.orientation.z = quat[2];
 		  ar_pose_marker_.pose.pose.orientation.w = quat[3];
-		
+
 		  ar_pose_marker_.confidence = marker_info->cf;
 
 		  arMarkerPub_.publish(ar_pose_marker_);
 		  ROS_DEBUG ("Published ar_single marker");
-		
+
       // **** publish transform between camera and marker
 
 #if ROS_VERSION_MINIMUM(1, 9, 0)
@@ -336,7 +338,7 @@ namespace ar_pose
         btTransform markerPose = t * m; // marker pose in the camera frame
 #endif
 
-      
+
         tf::poseTFToMsg(markerPose, rvizMarker_.pose);
 
 			  rvizMarker_.header.frame_id = image_msg->header.frame_id;
@@ -354,7 +356,7 @@ namespace ar_pose
 			  rvizMarker_.color.b = 0.0f;
 			  rvizMarker_.color.a = 1.0;
 			  rvizMarker_.lifetime = ros::Duration(1.0);
-			
+
 			  rvizMarkerPub_.publish(rvizMarker_);
 			  ROS_DEBUG ("Published visual marker");
       }
@@ -362,9 +364,14 @@ namespace ar_pose
     else
     {
       contF = 0;
-      ROS_INFO("Failed to locate marker");
-      ROS_DEBUG ("Failed to locate marker");
+      //ar_pose_marker_.header.frame_id = image_msg->header.frame_id;
+      //ar_pose_marker_.header.stamp    = image_msg->header.stamp;
+      //ar_pose_marker_.id              = marker_info->id;
+
+
+      ros::param::set("artag_found",false);
+      //ROS_INFO("Failed to locate marker");
+      ROS_DEBUG ("Failed to locate marker -- debug");
     }
   }
 }                               // end namespace ar_pose
-
